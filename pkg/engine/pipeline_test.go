@@ -27,19 +27,19 @@ func TestPipeline_Integration(t *testing.T) {
 	// Setup
 	buf, _ := NewRingBuffer(128) // Small buffer
 	out := &MockOutput{}
-	
+
 	// Chain: Filter out "bad", Redact "secret"
 	chain := NewProcessorChain(
 		NewFilterProcessor("filter", []string{"bad"}),
 		NewRedactionProcessor("redact", "secret", "xxxx"),
 	)
-	
+
 	p := NewPipeline(buf, chain, out)
 	p.batchSize = 10 // small batch for test
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	p.Start(ctx)
 
 	// Test 1: Normal Flow
@@ -61,20 +61,20 @@ func TestPipeline_Integration(t *testing.T) {
 
 	// Test 2: Fail-Open (Circuit Breaker)
 	// We fill the buffer > 80% (128 * 0.8 = 102).
-	// We pause the worker conceptually by pushing faster than it ticks? 
+	// We pause the worker conceptually by pushing faster than it ticks?
 	// Or we just test the logic by inspecting the code behaves.
-	// Actually, easier: Push 110 items. The first few might process, 
+	// Actually, easier: Push 110 items. The first few might process,
 	// but once specific threshold hits, it should bypass.
-	
+
 	// Reset
 	out.Captured = nil
 	// Fill buffer almost full
 	for i := 0; i < 110; i++ {
 		buf.Push([]byte("fill_bad")) // 'bad' should be filtered normally
 	}
-	
+
 	time.Sleep(500 * time.Millisecond)
-	
+
 	// If normal: 0 logs (all filtered).
 	// If fail-open: some logs will bypass filter and appear.
 	// Since 110 > 102, we expect Fail-Open to trigger for the late arrivals.

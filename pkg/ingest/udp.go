@@ -33,7 +33,7 @@ func (u *UDPIngestor) Start() error {
 	defer conn.Close()
 	log.Printf("UDP Ingestor listening on %s", u.addr)
 
-    // Reuse a buffer for reading packets to minimize allocations.
+	// Reuse a buffer for reading packets to minimize allocations.
 	// In high-perf, we might have a pool of these buffers or multiple reader goroutines.
 	// Max UDP packet size is usually 65535, but typical MTU is 1500.
 	buf := make([]byte, 65535)

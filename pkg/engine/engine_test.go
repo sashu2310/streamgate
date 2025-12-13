@@ -12,7 +12,7 @@ func BenchmarkPipeline_NoAlloc(b *testing.B) {
 		// Redaction *does* alloc if it finds a match, so we test the "happy path" (no sensitive data) first:
 		NewRedactionProcessor("redact_cc", "4111-1234", "xxxx"),
 	)
-	
+
 	ctx := &ProcessingContext{Context: context.Background()}
 	data := []byte("INFO: User login successful for ID 9999")
 	b.ResetTimer()

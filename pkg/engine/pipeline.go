@@ -12,7 +12,7 @@ type Pipeline struct {
 	buffer *RingBuffer
 	chain  *ProcessorChain
 	output output.Output
-	
+
 	// Config
 	batchSize int
 	workers   int
@@ -39,7 +39,7 @@ func (p *Pipeline) worker(ctx context.Context) {
 	// Reusable batch slice
 	batch := make([][]byte, 0, p.batchSize)
 	pCtx := &ProcessingContext{Context: ctx}
-	
+
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
@@ -64,7 +64,7 @@ func (p *Pipeline) worker(ctx context.Context) {
 			// 1. Pop from Buffer
 			item := p.buffer.Pop()
 			if item == nil {
-				// Buffer empty, tiny sleep to save CPU? 
+				// Buffer empty, tiny sleep to save CPU?
 				// Or use a Cond/Signal (better).
 				// For V1 spin-wait with sleep is okay-ish but suboptimal.
 				time.Sleep(1 * time.Millisecond) // TODO: Replace with sync.Cond
@@ -75,7 +75,7 @@ func (p *Pipeline) worker(ctx context.Context) {
 			// If buffer is > 80% full, bypass processing to drain quicker.
 			usage := p.buffer.Usage()
 			capacity := p.buffer.Capacity()
-			
+
 			if float64(usage) > float64(capacity)*0.80 {
 				// Bypass Mode!
 				batch = append(batch, item)
@@ -91,7 +91,7 @@ func (p *Pipeline) worker(ctx context.Context) {
 				}
 				batch = append(batch, processed)
 			}
-			
+
 			// 4. Add to Batch (handled above)
 			if len(batch) >= p.batchSize {
 				flush()

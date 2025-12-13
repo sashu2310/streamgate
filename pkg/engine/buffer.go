@@ -63,8 +63,8 @@ func (rb *RingBuffer) Pop() []byte {
 
 	item := rb.data[tail&rb.mask]
 	// Help GC? In our zero-alloc design, we might want to recycle this buffer back to a pool later.
-	// rb.data[tail&rb.mask] = nil 
-	
+	// rb.data[tail&rb.mask] = nil
+
 	atomic.StoreUint64(&rb.tail, tail+1)
 	return item
 }

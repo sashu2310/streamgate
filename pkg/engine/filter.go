@@ -8,7 +8,7 @@ import (
 // or drops logs that DO match (BlockList).
 // For V1, let's implement a BlockList (Drop if contains X).
 type FilterProcessor struct {
-	name      string
+	name       string
 	blockBytes [][]byte // Pre-converted to bytes for zero-alloc comparison
 }
 
@@ -28,7 +28,7 @@ func (f *FilterProcessor) Name() string {
 }
 
 func (f *FilterProcessor) Process(ctx *ProcessingContext, entry []byte) ([]byte, bool, error) {
-	// Naive O(N*M) check. 
+	// Naive O(N*M) check.
 	// Optimization: Aho-Corasick for many patterns.
 	for _, word := range f.blockBytes {
 		if bytes.Contains(entry, word) {

@@ -61,7 +61,7 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	log.Println("StreamGate running. Press Ctrl+C to stop.")
-	
+
 	<-sigChan
 	log.Println("Shutting down...")
 	cancel()
