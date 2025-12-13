@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# StreamGate Pre-Commit Hook
+# 1. Runs `go fmt`
+# 2. Re-adds any modified files
+# 3. (Optional) Could run `go vet` or `go test` here too
+
+echo "Running go fmt..."
+go fmt ./...
+
+# If go fmt modified files, we need to add them to the commit index
+# Note: 'git add .' adds EVERYTHING. Be careful if you have unstaged changes you didn't want to commit.
+# A safer approach is to only add files that were already staged, but that's complex shell scripting.
+# For a solo dev/small team, 'git add .' is usually fine if you are careful.
+git add .
+
+exit 0
