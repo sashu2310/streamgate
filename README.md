@@ -16,6 +16,35 @@ StreamGate uses a **Split-Plane Architecture**:
 
 ## Current Status
 *   [x] Project Skeleton & Interfaces
-*   [ ] Ingestion Layer (TCP/UDP)
-*   [ ] Buffering & Processing Engine
-*   [ ] Output Providers
+*   [x] Ingestion Layer (TCP/UDP)
+*   [x] Buffering & Processing Engine
+*   [x] Output Providers (Console)
+
+## Quick Start
+
+### Prerequisites
+*   Go 1.23+
+
+### Building
+```bash
+go build -o streamgate ./cmd/streamgate
+```
+
+### Running
+Start the server:
+```bash
+./streamgate
+```
+
+### Testing (Manual)
+Send a test log via TCP (in a separate terminal):
+```bash
+# Normal Log
+echo "INFO: Hello StreamGate" | nc localhost 8081
+
+# Sensitive Log (will be redacted)
+echo "User 4111-1234 checkout" | nc localhost 8081
+
+# Debug Log (will be dropped)
+echo "DEBUG: this should vanish" | nc localhost 8081
+```
