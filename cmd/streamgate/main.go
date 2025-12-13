@@ -36,9 +36,12 @@ func main() {
 	// 4. Output
 	out := output.NewConsoleOutput()
 
-	// 5. Ingestor (TCP)
-	addr := fmt.Sprintf(":%d", cfg.Server.TCPPort)
-	ingestor := ingest.NewTCPIngestor(addr, buffer)
+	// 5. Ingestors
+	tcpAddr := fmt.Sprintf(":%d", cfg.Server.TCPPort)
+	tcpIngestor := ingest.NewTCPIngestor(tcpAddr, buffer)
+
+	udpAddr := fmt.Sprintf(":%d", cfg.Server.UDPPort)
+	udpIngestor := ingest.NewUDPIngestor(udpAddr, buffer)
 
 	// 6. Pipeline
 	pipeline := engine.NewPipeline(buffer, chain, out)
@@ -50,10 +53,16 @@ func main() {
 	// Start Pipeline (Consumer)
 	pipeline.Start(ctx)
 
-	// Start Ingestor (Producer) - Blocking, so run in goroutine
+	// Start Ingestors (Producers)
 	go func() {
-		if err := ingestor.Start(); err != nil {
-			log.Fatalf("Ingestor died: %v", err)
+		if err := tcpIngestor.Start(); err != nil {
+			log.Fatalf("TCP Ingestor died: %v", err)
+		}
+	}()
+
+	go func() {
+		if err := udpIngestor.Start(); err != nil {
+			log.Fatalf("UDP Ingestor died: %v", err)
 		}
 	}()
 
