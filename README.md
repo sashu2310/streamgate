@@ -12,78 +12,97 @@ StreamGate is designed to reduce observability costs and improve system stabilit
 ## Architecture
 StreamGate uses a **Split-Plane Architecture**:
 *   **Data Plane (Go):** Stateless, high-throughput proxy handling the hot path (Ingestion -> Buffer -> Process -> Output). Optimized for zero specific allocations and 100k+ events/sec.
-*   **Control Plane (Python):** (Planned) Manages configuration rules and provides a dashboard for visibility.
+*   **Control Plane (Python):** REST API for managing configuration rules (Filters, Redactions).
+*   **Sync Layer (Redis):** Pub/Sub mechanism ensuring real-time configuration hot-reloading without service restarts.
 
-## Getting Started
+## Quick Start (Docker)
 
-### Prerequisites
-*   Go 1.23+
+The easiest way to run StreamGate is using Docker Compose. This starts Redis, the Control Plane, and the Data Plane automatically.
 
-### Building and Running
 1.  **Clone the repository**:
     ```bash
     git clone https://github.com/sashu2310/streamgate.git
     cd streamgate
     ```
 
-2.  **Run the application**:
+2.  **Start Services**:
     ```bash
-    go run cmd/streamgate/main.go
-    ```
-    *Alternatively, build and run binary:*
-    ```bash
-    go build -o streamgate cmd/streamgate/main.go
-    ./streamgate
+    docker-compose up --build
     ```
 
-3.  The server starts with default settings:
-    *   **TCP Listener**: Port 8081
-    *   **UDP Listener**: Port 8082
-    *   **HTTP API**: Port 8080 (Placeholder)
+3.  **Verify**:
+    *   **Control Plane (API):** `http://localhost:8000/docs`
+    *   **Data Plane (Ingest):** Sending logs to `localhost:8081`
 
-## Usage Examples
+---
 
-Once StreamGate is running, you can send logs to it using `netcat` (nc) or any logging client.
+## Manual Setup (Development)
 
-### 1. Send Logs via TCP
+### Prerequisites
+*   Go 1.23+
+*   Python 3.8+
+*   Redis (running on localhost:6379)
+
+### 1. Start Redis
 ```bash
-echo "Info: User logged in" | nc localhost 8081
+docker run -p 6379:6379 -d redis
+# OR
+redis-server
 ```
 
-### 2. Send Logs via UDP
+### 2. Start Control Plane (Python)
 ```bash
-echo "Info: Metric received" | nc -u -w1 localhost 8082
+cd control_plane
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+*API is now running at `http://localhost:8000`*
+
+### 3. Start Data Plane (Go)
+Open a new terminal:
+```bash
+go run cmd/streamgate/main.go
+```
+*StreamGate is now listening on TCP :8081 and UDP :8082*
+
+## Usage & Verification
+
+### Send Logs (Data Plane)
+StreamGate starts with an **Empty Pipeline** (Pass-through).
+```bash
+echo "DEBUG: test log" | nc localhost 8081
+# Output: "DEBUG: test log"
 ```
 
-### 3. Test Filtering (Drop DEBUG logs)
-StreamGate is configured to drop logs containing "DEBUG".
+### Add a Rule (Control Plane)
+Add a rule to filter out "DEBUG" logs dynamically.
 ```bash
-# This will be dropped and NOT shown in the console output
-echo "DEBUG: Detailed trace info" | nc localhost 8081
+# 1. Create Rule
+curl -X POST "http://localhost:8000/rules" \
+     -H "Content-Type: application/json" \
+     -d '{"id": "drop_debug", "type": "filter", "params": {"value": "DEBUG"}}'
+
+# 2. Publish Config (Hot Reload)
+curl -X POST "http://localhost:8000/publish" -d ''
 ```
 
-### 4. Test Redaction (PII)
-StreamGate is configured to redact Credit Card numbers (pattern `4111-1234`).
+### Verify Logic Change
+Send the same log again. It should now be dropped only because of the rule update.
 ```bash
-# Input
-echo "Payment processed for 4111-1234" | nc localhost 8081
-
-# Output in Console
-# Payment processed for xxxx-xxxx
+echo "DEBUG: test log" | nc localhost 8081
+# Output: (Silence)
 ```
 
 ## Configuration
-
-Currently, configuration is statically defined in `cmd/streamgate/main.go` for the prototype:
-*   **Buffer Size**: 65536 slots
-*   **Processors**:
-    *   Filter: Drops lines with "DEBUG"
-    *   Redactor: Masks "4111-1234"
+*   **TCP Port**: 8081
+*   **UDP Port**: 8082
+*   **Redis**: localhost:6379
+*   **Control Plane API**: localhost:8000
 
 ## Current Status
 *   [x] Project Skeleton & Interfaces
 *   [x] Ingestion Layer (TCP/UDP)
 *   [x] High-Performance Ring Buffer
 *   [x] Processing Engine (Filter, Redact)
-*   [x] Console Output
-*   [ ] Control Plane Integration
+*   [x] Control Plane API (Python/FastAPI)
+*   [x] End-to-End Hot Reloading
