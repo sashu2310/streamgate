@@ -9,6 +9,21 @@ StreamGate is designed to reduce observability costs and improve system stabilit
 *   **Sampling:** Dynamically sampling high-volume streams.
 *   **Fail-Open Design:** Ensuring that governance never becomes a bottleneck; if StreamGate is under pressure, it bypasses processing to prioritize throughput.
 
+## Features
+- **Ingestion**: TCP & UDP (High Performance)
+- **Processing**:
+    - JSON-based Rules (Redis)
+    - Hot-swappable Filter & Redaction processors
+    - Dynamic Batch Size configuration
+- **Output**:
+    - Console (Stdout)
+    - HTTP (Webhooks, External APIs)
+    - Fan-out (Multiple outputs simultaneously)
+- **Architecture**:
+    - Separate Control Plane (Python) & Data Plane (Go)
+    - Redis-based state management
+    - Dockerized & Ready for Orchestration
+
 ## Architecture
 StreamGate uses a **Split-Plane Architecture**:
 *   **Data Plane (Go):** Stateless, high-throughput proxy handling the hot path (Ingestion -> Buffer -> Process -> Output). Optimized for zero specific allocations and 100k+ events/sec.
@@ -106,3 +121,5 @@ echo "DEBUG: test log" | nc localhost 8081
 *   [x] Processing Engine (Filter, Redact)
 *   [x] Control Plane API (Python/FastAPI)
 *   [x] End-to-End Hot Reloading
+*   [x] HTTP Output Provider
+*   [x] Dynamic Batch Size Configuration
