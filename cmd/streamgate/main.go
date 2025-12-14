@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"streamgate/pkg/config"
+	"streamgate/pkg/control"
 	"streamgate/pkg/engine"
 	"streamgate/pkg/ingest"
 	"streamgate/pkg/output"
@@ -27,11 +28,9 @@ func main() {
 		log.Fatalf("Failed to create buffer: %v", err)
 	}
 
-	// 3. Processors
-	chain := engine.NewProcessorChain(
-		engine.NewFilterProcessor("drop_debug", []string{"DEBUG"}),
-		engine.NewRedactionProcessor("redact_cc", "4111-1234", "xxxx-xxxx"),
-	)
+	// 3. Processors (Dynamic)
+	// Start with an empty chain. The Watcher will update it.
+	chain := engine.NewProcessorChain()
 
 	// 4. Output
 	out := output.NewConsoleOutput()
@@ -46,12 +45,19 @@ func main() {
 	// 6. Pipeline
 	pipeline := engine.NewPipeline(buffer, chain, out)
 
+	// 7. Control Plane Watcher
+	// Use Redis address from config
+	watcher := control.NewWatcher(cfg.Redis.Address, pipeline)
+
 	// --- Start ---
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Start Pipeline (Consumer)
 	pipeline.Start(ctx)
+
+	// Start Watcher
+	go watcher.Start(ctx)
 
 	// Start Ingestors (Producers)
 	go func() {
