@@ -4,13 +4,14 @@ import (
 	"context"
 	"log"
 	"streamgate/pkg/output"
+	"sync/atomic"
 	"time"
 )
 
 // Pipeline connects the Ingest Buffer -> ProcessorChain -> Output.
 type Pipeline struct {
 	buffer *RingBuffer
-	chain  *ProcessorChain
+	chain  atomic.Pointer[ProcessorChain] // Hot-swappable chain
 	output output.Output
 
 	// Config
@@ -19,13 +20,20 @@ type Pipeline struct {
 }
 
 func NewPipeline(buf *RingBuffer, chain *ProcessorChain, out output.Output) *Pipeline {
-	return &Pipeline{
+	p := &Pipeline{
 		buffer:    buf,
-		chain:     chain,
 		output:    out,
 		batchSize: 100, // naive batching
 		workers:   1,   // single consumer for now to ensure strict ordering if needed
 	}
+	p.chain.Store(chain)
+	return p
+}
+
+// UpdateChain hot-swaps the processor chain safely.
+func (p *Pipeline) UpdateChain(chain *ProcessorChain) {
+	p.chain.Store(chain)
+	log.Println("Pipeline: Processor chain hot-swapped.")
 }
 
 func (p *Pipeline) Start(ctx context.Context) {
@@ -81,7 +89,9 @@ func (p *Pipeline) worker(ctx context.Context) {
 				batch = append(batch, item)
 			} else {
 				// Normal Mode
-				processed, drop, err := p.chain.Process(pCtx, item)
+				// Load current chain safely
+				currentChain := p.chain.Load()
+				processed, drop, err := currentChain.Process(pCtx, item)
 				if err != nil {
 					log.Printf("Process error: %v", err)
 					continue
