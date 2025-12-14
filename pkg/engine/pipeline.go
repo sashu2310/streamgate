@@ -12,7 +12,7 @@ import (
 type Pipeline struct {
 	buffer *RingBuffer
 	chain  atomic.Pointer[ProcessorChain] // Hot-swappable chain
-	output output.Output
+	output atomic.Value                   // Hot-swappable output (stores output.Output)
 
 	// Config
 	batchSize int
@@ -22,11 +22,18 @@ type Pipeline struct {
 func NewPipeline(buf *RingBuffer, chain *ProcessorChain, out output.Output) *Pipeline {
 	p := &Pipeline{
 		buffer:    buf,
-		output:    out,
 		batchSize: 100, // naive batching
 		workers:   1,   // single consumer for now to ensure strict ordering if needed
 	}
 	p.chain.Store(chain)
+	
+	// CRITICAL FIX: atomic.Value must always store the same concrete type!
+	// We will always store *output.FanOutOutput. 
+	// Even if 'out' is a single ConsoleOutput, we wrap it.
+	// Check if it's already FanOut to avoid double wrapping (optional, but safer to just wrap)
+	fanOut := output.NewFanOutOutput(out)
+	p.output.Store(fanOut)
+	
 	return p
 }
 
@@ -34,6 +41,19 @@ func NewPipeline(buf *RingBuffer, chain *ProcessorChain, out output.Output) *Pip
 func (p *Pipeline) UpdateChain(chain *ProcessorChain) {
 	p.chain.Store(chain)
 	log.Println("Pipeline: Processor chain hot-swapped.")
+}
+
+// UpdateOutput hot-swaps the output provider safely.
+// Note: We expect 'out' to effectively be a *FanOutOutput for consistency,
+// or we wrap it here if we want to be generous.
+func (p *Pipeline) UpdateOutput(out output.Output) {
+	// Ensure type consistency for atomic.Value
+	if _, ok := out.(*output.FanOutOutput); !ok {
+		// Wrap it if it's not already a FanOut
+		out = output.NewFanOutOutput(out)
+	}
+	p.output.Store(out)
+	log.Println("Pipeline: Output provider hot-swapped.")
 }
 
 func (p *Pipeline) Start(ctx context.Context) {
@@ -53,7 +73,9 @@ func (p *Pipeline) worker(ctx context.Context) {
 
 	flush := func() {
 		if len(batch) > 0 {
-			if err := p.output.WriteBatch(batch); err != nil {
+			// Load current output safely
+			currentOutput := p.output.Load().(output.Output)
+			if err := currentOutput.WriteBatch(batch); err != nil {
 				log.Printf("Output error: %v", err)
 			}
 			// Reset batch slice (keep capacity)
