@@ -11,9 +11,15 @@ class ProcessorRule(BaseModel):
     # Filter: {"key": "level", "value": "DEBUG"}
     # Redact: {"pattern": "4111-xxxx", "replacement": "xxxx-xxxx"}
 
+class OutputTarget(BaseModel):
+    type: Literal["console", "http"]
+    url: Optional[str] = None
+    headers: Optional[Dict[str, str]] = None
+
 class PipelineConfig(BaseModel):
     name: str
     processors: List[ProcessorRule]
+    outputs: List[OutputTarget] = Field(default_factory=list)
 
 class Manifest(BaseModel):
     version: str = "1.0"
