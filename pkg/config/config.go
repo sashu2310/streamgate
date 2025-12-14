@@ -1,5 +1,10 @@
 package config
 
+import (
+	"fmt"
+	"os"
+)
+
 // Config holds the specific configuration for the StreamGate instance.
 type Config struct {
 	Server ServerConfig `yaml:"server"`
@@ -21,6 +26,12 @@ type RedisConfig struct {
 
 // DefaultConfig returns a safe default configuration.
 func DefaultConfig() *Config {
+	redisHost := os.Getenv("REDIS_HOST")
+	if redisHost == "" {
+		redisHost = "localhost"
+	}
+	redisAddr := fmt.Sprintf("%s:6379", redisHost)
+
 	return &Config{
 		Server: ServerConfig{
 			TCPPort:  8081,
@@ -28,7 +39,7 @@ func DefaultConfig() *Config {
 			HTTPPort: 8080,
 		},
 		Redis: RedisConfig{
-			Address: "localhost:6379",
+			Address: redisAddr,
 			Channel: "streamgate_config",
 		},
 	}
