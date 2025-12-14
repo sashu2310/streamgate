@@ -3,7 +3,7 @@ import redis
 import json
 import os
 from typing import List
-from models import Manifest, PipelineConfig, ProcessorRule
+from models import Manifest, PipelineConfig, ProcessorRule, OutputTarget
 
 app = FastAPI(title="StreamGate Control Plane")
 
@@ -16,21 +16,21 @@ REDIS_KEY = "streamgate_config"
 # Redis Client
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 
-# In-memory store for the prototype (In real app, use DB)
-# Default empty state
+# In-memory store
 current_rules: List[ProcessorRule] = []
+current_outputs: List[OutputTarget] = []
 
 @app.get("/")
 def health():
     return {"status": "ok", "service": "streamgate-control-plane"}
 
+# --- Rules ---
 @app.get("/rules", response_model=List[ProcessorRule])
 def get_rules():
     return current_rules
 
 @app.post("/rules")
 def add_rule(rule: ProcessorRule):
-    # Basic validation: Check if ID exists
     for r in current_rules:
         if r.id == rule.id:
             raise HTTPException(status_code=400, detail=f"Rule ID {rule.id} already exists")
@@ -46,13 +46,40 @@ def delete_rule(rule_id: str):
          raise HTTPException(status_code=404, detail="Rule not found")
     return {"status": "deleted", "id": rule_id}
 
+# --- Outputs ---
+@app.get("/outputs", response_model=List[OutputTarget])
+def get_outputs():
+    return current_outputs
+
+@app.post("/outputs")
+def add_output(output: OutputTarget):
+    # Basic check to avoid duplicate URLs for http
+    if output.type == "http" and output.url:
+         for o in current_outputs:
+             if o.type == "http" and o.url == output.url:
+                  raise HTTPException(status_code=400, detail="Output URL already exists")
+    current_outputs.append(output)
+    return {"status": "added", "output": output}
+
+@app.delete("/outputs")
+def clear_outputs():
+    """Clear all outputs (reset to empty)"""
+    global current_outputs
+    current_outputs = []
+    return {"status": "cleared"}
+
+# --- Publish ---
 @app.post("/publish")
 def publish_config():
     """
-    Compiles the current rules into a Manifest and pushes to Redis.
+    Compiles Rules + Outputs into a Manifest and pushes to Redis.
     """
     # 1. Build Manifest
-    pipeline = PipelineConfig(name="default_pipeline", processors=current_rules)
+    pipeline = PipelineConfig(
+        name="default_pipeline", 
+        processors=current_rules,
+        outputs=current_outputs
+    )
     manifest = Manifest(pipelines=[pipeline])
     
     # 2. Serialize
