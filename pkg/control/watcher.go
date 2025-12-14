@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"streamgate/pkg/engine"
+	"streamgate/pkg/output"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -17,12 +18,19 @@ type Manifest struct {
 type PipelineConfig struct {
 	Name       string          `json:"name"`
 	Processors []ProcessorRule `json:"processors"`
+	Outputs    []OutputTarget  `json:"outputs"`
 }
 
 type ProcessorRule struct {
 	ID     string            `json:"id"`
 	Type   string            `json:"type"`
 	Params map[string]string `json:"params"`
+}
+
+type OutputTarget struct {
+	Type    string            `json:"type"`
+	URL     string            `json:"url"`
+	Headers map[string]string `json:"headers"`
 }
 
 type Watcher struct {
@@ -110,4 +118,25 @@ func (w *Watcher) reload() {
 
 	newChain := engine.NewProcessorChain(processors...)
 	w.pipeline.UpdateChain(newChain)
+
+	// Build Outputs
+	// Default to Console if none specified
+	var outputs []output.Output
+	if len(cfg.Outputs) == 0 {
+		outputs = append(outputs, output.NewConsoleOutput())
+	} else {
+		for _, outCfg := range cfg.Outputs {
+			switch outCfg.Type {
+			case "console":
+				outputs = append(outputs, output.NewConsoleOutput())
+			case "http":
+				if outCfg.URL != "" {
+					outputs = append(outputs, output.NewHTTPOutput(outCfg.URL, outCfg.Headers))
+				}
+			}
+		}
+	}
+
+	// Use FanOut manager to handle multiple outputs
+	w.pipeline.UpdateOutput(output.NewFanOutOutput(outputs...))
 }
