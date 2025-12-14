@@ -19,6 +19,7 @@ type PipelineConfig struct {
 	Name       string          `json:"name"`
 	Processors []ProcessorRule `json:"processors"`
 	Outputs    []OutputTarget  `json:"outputs"`
+	BatchSize  int             `json:"batch_size"`
 }
 
 type ProcessorRule struct {
@@ -139,4 +140,14 @@ func (w *Watcher) reload() {
 
 	// Use FanOut manager to handle multiple outputs
 	w.pipeline.UpdateOutput(output.NewFanOutOutput(outputs...))
+
+	// Update Batch Size
+	// If 0 (omitted), default to 100 inside UpdateBatchSize or handle here.
+	// We'll pass it directly, Pipeline handles < 1.
+	// But let's respect default 100 if missing.
+	bz := int64(cfg.BatchSize)
+	if bz == 0 {
+		bz = 100
+	}
+	w.pipeline.UpdateBatchSize(bz)
 }

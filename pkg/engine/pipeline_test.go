@@ -35,7 +35,7 @@ func TestPipeline_Integration(t *testing.T) {
 	)
 
 	p := NewPipeline(buf, chain, out)
-	p.batchSize = 10 // small batch for test
+	p.UpdateBatchSize(10) // small batch for test
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

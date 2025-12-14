@@ -19,6 +19,7 @@ r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
 # In-memory store
 current_rules: List[ProcessorRule] = []
 current_outputs: List[OutputTarget] = []
+current_batch_size: int = 100
 
 @app.get("/")
 def health():
@@ -68,6 +69,19 @@ def clear_outputs():
     current_outputs = []
     return {"status": "cleared"}
 
+# --- Settings ---
+@app.get("/config/batch_size")
+def get_batch_size():
+    return {"batch_size": current_batch_size}
+
+@app.post("/config/batch_size")
+def set_batch_size(size: int):
+    global current_batch_size
+    if size < 1 or size > 10000:
+        raise HTTPException(status_code=400, detail="Batch size must be between 1 and 10000")
+    current_batch_size = size
+    return {"status": "updated", "batch_size": size}
+
 # --- Publish ---
 @app.post("/publish")
 def publish_config():
@@ -78,7 +92,8 @@ def publish_config():
     pipeline = PipelineConfig(
         name="default_pipeline", 
         processors=current_rules,
-        outputs=current_outputs
+        outputs=current_outputs,
+        batch_size=current_batch_size
     )
     manifest = Manifest(pipelines=[pipeline])
     

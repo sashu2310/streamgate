@@ -15,26 +15,31 @@ type Pipeline struct {
 	output atomic.Value                   // Hot-swappable output (stores output.Output)
 
 	// Config
-	batchSize int
+	batchSize atomic.Int64
 	workers   int
 }
 
 func NewPipeline(buf *RingBuffer, chain *ProcessorChain, out output.Output) *Pipeline {
 	p := &Pipeline{
-		buffer:    buf,
-		batchSize: 100, // naive batching
-		workers:   1,   // single consumer for now to ensure strict ordering if needed
+		buffer:  buf,
+		workers: 1, // single consumer for now
 	}
+	p.batchSize.Store(100)
 	p.chain.Store(chain)
 	
 	// CRITICAL FIX: atomic.Value must always store the same concrete type!
-	// We will always store *output.FanOutOutput. 
-	// Even if 'out' is a single ConsoleOutput, we wrap it.
-	// Check if it's already FanOut to avoid double wrapping (optional, but safer to just wrap)
 	fanOut := output.NewFanOutOutput(out)
 	p.output.Store(fanOut)
 	
 	return p
+}
+
+// UpdateBatchSize updates the preferred batch size safely.
+func (p *Pipeline) UpdateBatchSize(size int64) {
+	if size < 1 {
+		size = 1
+	}
+	p.batchSize.Store(size)
 }
 
 // UpdateChain hot-swaps the processor chain safely.
@@ -64,8 +69,9 @@ func (p *Pipeline) Start(ctx context.Context) {
 }
 
 func (p *Pipeline) worker(ctx context.Context) {
-	// Reusable batch slice
-	batch := make([][]byte, 0, p.batchSize)
+	// Reusable batch slice. Start with default 100 capacity.
+	// If batchSize increases later, append() will handle reallocation automatically.
+	batch := make([][]byte, 0, 100)
 	pCtx := &ProcessingContext{Context: ctx}
 
 	ticker := time.NewTicker(100 * time.Millisecond)
@@ -125,7 +131,10 @@ func (p *Pipeline) worker(ctx context.Context) {
 			}
 
 			// 4. Add to Batch (handled above)
-			if len(batch) >= p.batchSize {
+			// 4. Add to Batch (handled above)
+			// Check current batch limit dynamically
+			currentLimit := int(p.batchSize.Load())
+			if len(batch) >= currentLimit {
 				flush()
 			}
 		}

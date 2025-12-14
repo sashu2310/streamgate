@@ -20,6 +20,7 @@ class PipelineConfig(BaseModel):
     name: str
     processors: List[ProcessorRule]
     outputs: List[OutputTarget] = Field(default_factory=list)
+    batch_size: int = Field(default=100, ge=1, le=10000)
 
 class Manifest(BaseModel):
     version: str = "1.0"
