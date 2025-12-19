@@ -1,9 +1,30 @@
 # StreamGate
 ### 🛡️ The Observability Firewall
 
-**Cut your Datadog/Splunk bill by 40% without losing visibility.**
+**Cut your Datadog/Splunk bill by 40-60% without losing visibility.**
 
-StreamGate is a high-performance (200k+ events/sec), lock-free proxy that filters noise and redacts PII before logs leave your network. Built with a **Go Data Plane** for speed and a **Python Control Plane** for flexibility.
+StreamGate is a high-performance, edge-first observability data proxy that puts you in control of your logging costs and data security. By filtering noise and redacting PII before it leaves your network, StreamGate ensures your vendor budgets go further and your data stays compliant.
+
+[Quickstart](#quick-start) | [Docs](ARCHITECTURE.md) | [Performance](#performance)
+
+---
+
+## What is StreamGate?
+
+StreamGate is a specialized **Observability Firewall** designed to sit between your microservices and your upstream vendors (like Datadog, Splunk, or New Relic). It empowers engineering teams to treat their observability data as a manageable resource rather than an uncontrollable expense.
+
+### Principles
+
+*   **Reliable** - Built with a high-performance Go data plane, StreamGate is designed for 24/7 reliability and low overhead.
+*   **Dynamic** - Hot-reload configurations in milliseconds via a Python-based control plane. No agent restarts, no dropped logs.
+*   **Fail-Open** - Engineered to never block your application. If the proxy is under pressure, it prioritizes your service health over data processing.
+
+### Use Cases
+
+*   **Slash Observability Costs**: Drop high-volume `DEBUG` logs or sample noisy streams at the edge, before they hit your bill.
+*   **Enforce PII Compliance**: Redact sensitive data (SSNs, API keys) at the network level, ensuring it never reaches third-party vendors.
+*   **Vendor Agility**: Transition between backends or send data to multiple destinations simultaneously without changing your application code.
+*   **Developer Agility**: Tweak logging rules in real-time via API to debug live issues without a redeploy.
 
 ---
 
@@ -78,32 +99,13 @@ graph TB
     style D fill:#f39c12,color:#fff
 ```
 
-**Key Design Choices**:
-- **Go Data Plane**: Zero-allocation ring buffer, atomic hot-swapping.
-- **Python Control Plane**: Ergonomic API, schema validation (Pydantic).
-- **Redis Sync**: Pub/Sub ensures all Data Plane instances get config updates instantly.
+### Split-Plane Design
+StreamGate separates the **hot path** from the **logic path**:
+- **Go Data Plane**: A stateless, ultra-fast engine optimized for zero-allocation processing and high concurrency.
+- **Python Control Plane**: A developer-friendly API for managing rules and seeing live status.
+- **Redis Sync Layer**: The glue that enables real-time hot-reloads across all proxy instances without a single restart.
 
-For a deep dive, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
-
----
-
-## Features
-
-- **Ingestion**: TCP & UDP listeners (supports syslog, custom protocols)
-- **Processing**:
-    - Dynamic Filter rules (drop logs by keyword/regex)
-    - PII Redaction (SSN, credit cards, custom patterns)
-    - Configurable batch size (trade latency for throughput)
-- **Output**:
-    - Console (stdout)
-    - HTTP (POST to any webhook/API)
-    - Fan-out (send to multiple destinations simultaneously)
-- **Operations**:
-    - Hot-reload configuration (zero downtime)
-    - Fail-open circuit breaker (never drops logs under load)
-    - Docker Compose ready
-
----
+For a technical deep dive, see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## Quick Start
 
@@ -229,37 +231,32 @@ See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for design trade-offs.
 
 ## Capabilities
 
-**Core Engine**:
-- High-performance ingestion (TCP/UDP)
-- Lock-free ring buffer (10k slots)
-- Dynamic processor chain (Filter, Redact)
-- Configurable batching (1-10,000)
+**Data Ingestion & Routing**
+- High-performance TCP/UDP listeners (Syslog/JSON)
+- Batching (Trade-off latency for throughput dynamically)
 
-**Control Plane**:
-- REST API (FastAPI + auto-docs)
-- JSON schema validation (Pydantic)
-- Hot-reload via Redis Pub/Sub
-
-**Output Providers**:
+**Output Providers**
 - Console (stdout)
-- HTTP (webhooks, Datadog, Splunk)
+- HTTP (StreamGate -> Datadog, Splunk)
 - Fan-out (multi-destination)
 
-**Operations**:
-- Docker Compose orchestration
-- Fail-open circuit breaker
-- Graceful shutdown
+**Governance & Security**
+- Dynamic Filtering (Keyword/Regex based drops)
+- PII Redaction (SSN, API Keys, custom patterns)
+- Fail-Open Circuit Breaker (Prioritizes application health)
 
----
+**Operations**
+- Real-time API-driven Hot Reloads
+- Dockerized & Kubernetes Ready
+- Detailed Operation Metrics
 
 ## Roadmap
 
-- [ ] CloudWatch native output
-- [ ] Sampling processor (probabilistic drop)
-- [ ] Multi-worker pipeline (key-based sharding)
-- [ ] Prometheus metrics endpoint
-- [ ] Kubernetes Helm chart
-- [ ] gRPC Control Plane API
+- [ ] CloudWatch & S3 Native Sinks
+- [ ] Probabilistic Sampling Transform
+- [ ] Kubernetes Helm Chart & Operator
+- [ ] Multi-worker Sharded Buffering
+- [ ] gRPC Management Interface
 
 ---
 
