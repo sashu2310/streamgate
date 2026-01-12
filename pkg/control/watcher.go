@@ -114,6 +114,21 @@ func (w *Watcher) reload() {
 			if pat != "" && rep != "" {
 				processors = append(processors, engine.NewRedactionProcessor(rule.ID, pat, rep))
 			}
+		case "attribute_filter":
+			// Params: attribute OR path, operator, value
+			cfg := engine.AttributeFilterConfig{
+				Name:      rule.ID,
+				Attribute: rule.Params["attribute"],
+				Path:      rule.Params["path"],
+				Operator:  engine.Operator(rule.Params["operator"]),
+				Value:     rule.Params["value"],
+			}
+			proc, err := engine.NewAttributeFilterProcessor(cfg)
+			if err != nil {
+				log.Printf("Control: Failed to create attribute_filter %s: %v", rule.ID, err)
+				continue
+			}
+			processors = append(processors, proc)
 		}
 	}
 

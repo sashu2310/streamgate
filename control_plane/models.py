@@ -4,12 +4,16 @@ import time
 
 class ProcessorRule(BaseModel):
     id: str
-    type: Literal["filter", "redact"]
+    type: Literal["filter", "redact", "attribute_filter"]
     params: Dict[str, str] = Field(..., description="Configuration parameters for the processor")
 
     # Example params:
-    # Filter: {"key": "level", "value": "DEBUG"}
-    # Redact: {"pattern": "4111-xxxx", "replacement": "xxxx-xxxx"}
+    # Filter: {"value": "DEBUG"}
+    # Redact: {"pattern": "\\d{3}-\\d{2}-\\d{4}", "replacement": "XXX-XX-XXXX"}
+    # AttributeFilter (well-known OTel attribute, auto-search):
+    #   {"attribute": "service.name", "operator": "equals", "value": "test-service"}
+    # AttributeFilter (explicit path):
+    #   {"path": "resource/attributes/custom.field", "operator": "contains", "value": "debug"}
 
 class OutputTarget(BaseModel):
     type: Literal["console", "http"]
