@@ -43,9 +43,9 @@ func TestPipeline_Integration(t *testing.T) {
 	p.Start(ctx)
 
 	// Test 1: Normal Flow
-	buf.Push([]byte("good log"))
-	buf.Push([]byte("this has secret value"))
-	buf.Push([]byte("this is bad log")) // Should be dropped
+	_ = buf.Push([]byte("good log"))
+	_ = buf.Push([]byte("this has secret value"))
+	_ = buf.Push([]byte("this is bad log")) // Should be dropped
 
 	time.Sleep(200 * time.Millisecond) // Wait for worker
 
@@ -70,7 +70,7 @@ func TestPipeline_Integration(t *testing.T) {
 	out.Captured = nil
 	// Fill buffer almost full
 	for i := 0; i < 110; i++ {
-		buf.Push([]byte("fill_bad")) // 'bad' should be filtered normally
+		_ = buf.Push([]byte("fill_bad")) // 'bad' should be filtered normally
 	}
 
 	time.Sleep(500 * time.Millisecond)
