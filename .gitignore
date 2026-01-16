@@ -22,3 +22,16 @@ go.work
 .vscode/
 *.swp
 *~
+
+# python virtual environment
+.venv/
+venv/
+
+# claude files
+CLAUDE.md
+
+#python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
