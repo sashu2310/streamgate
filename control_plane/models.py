@@ -2,25 +2,31 @@ from typing import List, Optional, Dict, Literal
 from pydantic import BaseModel, Field
 import time
 
+
 class ProcessorRule(BaseModel):
     id: str
     type: Literal["filter", "redact"]
-    params: Dict[str, str] = Field(..., description="Configuration parameters for the processor")
+    params: Dict[str, str] = Field(
+        ..., description="Configuration parameters for the processor"
+    )
 
     # Example params:
     # Filter: {"key": "level", "value": "DEBUG"}
     # Redact: {"pattern": "4111-xxxx", "replacement": "xxxx-xxxx"}
+
 
 class OutputTarget(BaseModel):
     type: Literal["console", "http"]
     url: Optional[str] = None
     headers: Optional[Dict[str, str]] = None
 
+
 class PipelineConfig(BaseModel):
     name: str
     processors: List[ProcessorRule]
     outputs: List[OutputTarget] = Field(default_factory=list)
     batch_size: int = Field(default=100, ge=1, le=10000)
+
 
 class Manifest(BaseModel):
     version: str = "1.0"
