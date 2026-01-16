@@ -57,10 +57,8 @@ func (t *TCPIngestor) handleConnection(conn net.Conn) {
 		}
 
 		// Trim newline if necessary, or keep it.
-		// Push to buffer.
-		if err := t.buffer.Push(line); err != nil {
-			// Buffer full strategy: Drop and maybe log occasionally?
-			// Logging every drop will kill performance.
-		}
+		// Push to buffer. On buffer full, silently drop (tail drop strategy).
+		// Logging every drop would kill performance.
+		_ = t.buffer.Push(line)
 	}
 }

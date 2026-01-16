@@ -52,8 +52,7 @@ func (u *UDPIngestor) Start() error {
 		packet := make([]byte, n)
 		copy(packet, buf[:n])
 
-		if err := u.buffer.Push(packet); err != nil {
-			// Drop (Tail Drop)
-		}
+		// On buffer full, silently drop (tail drop strategy).
+		_ = u.buffer.Push(packet)
 	}
 }

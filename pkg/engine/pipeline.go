@@ -26,11 +26,11 @@ func NewPipeline(buf *RingBuffer, chain *ProcessorChain, out output.Output) *Pip
 	}
 	p.batchSize.Store(100)
 	p.chain.Store(chain)
-	
+
 	// CRITICAL FIX: atomic.Value must always store the same concrete type!
 	fanOut := output.NewFanOutOutput(out)
 	p.output.Store(fanOut)
-	
+
 	return p
 }
 

@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException
 import redis
-import json
 import os
 from typing import List
 from models import Manifest, PipelineConfig, ProcessorRule, OutputTarget
@@ -21,22 +20,28 @@ current_rules: List[ProcessorRule] = []
 current_outputs: List[OutputTarget] = []
 current_batch_size: int = 100
 
+
 @app.get("/")
 def health():
     return {"status": "ok", "service": "streamgate-control-plane"}
+
 
 # --- Rules ---
 @app.get("/rules", response_model=List[ProcessorRule])
 def get_rules():
     return current_rules
 
+
 @app.post("/rules")
 def add_rule(rule: ProcessorRule):
     for r in current_rules:
         if r.id == rule.id:
-            raise HTTPException(status_code=400, detail=f"Rule ID {rule.id} already exists")
+            raise HTTPException(
+                status_code=400, detail=f"Rule ID {rule.id} already exists"
+            )
     current_rules.append(rule)
     return {"status": "added", "rule": rule}
+
 
 @app.delete("/rules/{rule_id}")
 def delete_rule(rule_id: str):
@@ -44,23 +49,26 @@ def delete_rule(rule_id: str):
     initial_len = len(current_rules)
     current_rules = [r for r in current_rules if r.id != rule_id]
     if len(current_rules) == initial_len:
-         raise HTTPException(status_code=404, detail="Rule not found")
+        raise HTTPException(status_code=404, detail="Rule not found")
     return {"status": "deleted", "id": rule_id}
+
 
 # --- Outputs ---
 @app.get("/outputs", response_model=List[OutputTarget])
 def get_outputs():
     return current_outputs
 
+
 @app.post("/outputs")
 def add_output(output: OutputTarget):
     # Basic check to avoid duplicate URLs for http
     if output.type == "http" and output.url:
-         for o in current_outputs:
-             if o.type == "http" and o.url == output.url:
-                  raise HTTPException(status_code=400, detail="Output URL already exists")
+        for o in current_outputs:
+            if o.type == "http" and o.url == output.url:
+                raise HTTPException(status_code=400, detail="Output URL already exists")
     current_outputs.append(output)
     return {"status": "added", "output": output}
+
 
 @app.delete("/outputs")
 def clear_outputs():
@@ -69,18 +77,23 @@ def clear_outputs():
     current_outputs = []
     return {"status": "cleared"}
 
+
 # --- Settings ---
 @app.get("/config/batch_size")
 def get_batch_size():
     return {"batch_size": current_batch_size}
 
+
 @app.post("/config/batch_size")
 def set_batch_size(size: int):
     global current_batch_size
     if size < 1 or size > 10000:
-        raise HTTPException(status_code=400, detail="Batch size must be between 1 and 10000")
+        raise HTTPException(
+            status_code=400, detail="Batch size must be between 1 and 10000"
+        )
     current_batch_size = size
     return {"status": "updated", "batch_size": size}
+
 
 # --- Publish ---
 @app.post("/publish")
@@ -90,24 +103,24 @@ def publish_config():
     """
     # 1. Build Manifest
     pipeline = PipelineConfig(
-        name="default_pipeline", 
+        name="default_pipeline",
         processors=current_rules,
         outputs=current_outputs,
-        batch_size=current_batch_size
+        batch_size=current_batch_size,
     )
     manifest = Manifest(pipelines=[pipeline])
-    
+
     # 2. Serialize
     data = manifest.json()
-    
+
     # 3. Save to Redis (Persist)
     r.set(REDIS_KEY, data)
-    
+
     # 4. Notify Listeners (Hot Reload)
     subscribers = r.publish(REDIS_CHANNEL, "RELOAD")
-    
+
     return {
-        "status": "published", 
-        "manifest": manifest, 
-        "subscribers_notified": subscribers
+        "status": "published",
+        "manifest": manifest,
+        "subscribers_notified": subscribers,
     }

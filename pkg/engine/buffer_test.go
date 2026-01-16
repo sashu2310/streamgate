@@ -40,8 +40,8 @@ func TestRingBuffer_FullDrop(t *testing.T) {
 	// Small buffer to test overflow easily
 	rb, _ := NewRingBuffer(2)
 
-	rb.Push([]byte("1"))
-	rb.Push([]byte("2"))
+	_ = rb.Push([]byte("1"))
+	_ = rb.Push([]byte("2"))
 
 	// Third push should fail (Buffer Full)
 	err := rb.Push([]byte("3"))
