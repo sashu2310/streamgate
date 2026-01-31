@@ -44,7 +44,7 @@ StreamGate uses a **Split-Plane Architecture** to separate concerns:
 │                    Data Plane (Go)                           │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
 │  │  Ingestor    │─▶│ Ring Buffer  │─▶│   Pipeline   │      │
-│  │  (TCP/UDP)   │  │  (Lock-Free) │  │   (Workers)  │      │
+│  │  (TCP/UDP)   │  │  (Lock-Free) │  │   (Worker)  │      │
 │  └──────────────┘  └──────────────┘  └──────┬───────┘      │
 │                                              │               │
 │  ┌──────────────┐                            ▼               │
@@ -144,9 +144,10 @@ func (u *UDPIngestor) Start(ctx context.Context) {
 
 **Purpose**: Decouple ingestion rate from processing rate.
 
-**Implementation**: Fixed-size circular array with atomic head/tail pointers.
-
-**Why Not Go Channels?**
+// RingBuffer is a fixed-size circular buffer for byte slices.
+// It is safe for a single writer (Ingestor) and single reader (Processor).
+// For multiple writers, see GitHub Issue #6 (Multi-Producer Support).
+type RingBuffer struct {
 - Channels allocate per-message.
 - Ring Buffer reuses memory slots.
 - Better cache locality for high-throughput scenarios.
