@@ -146,7 +146,7 @@ func (u *UDPIngestor) Start(ctx context.Context) {
 
 // RingBuffer is a fixed-size circular buffer for byte slices.
 // It is safe for a single writer (Ingestor) and single reader (Processor).
-// For multiple writers, see GitHub Issue #6 (Multi-Producer Support).
+// For multiple writers, see GitHub Issue #11 (Multi-Producer Support).
 type RingBuffer struct {
 - Channels allocate per-message.
 - Ring Buffer reuses memory slots.
