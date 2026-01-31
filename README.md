@@ -64,7 +64,7 @@ graph TB
     subgraph "Data Plane (Go)"
         F[TCP/UDP<br/>Ingestor]
         G[Ring Buffer<br/>Lock-Free]
-        H[Pipeline<br/>Workers]
+        H[Pipeline<br/>Worker]
         I[Processor Chain<br/>Atomic Swap]
         J[Output<br/>Fan-Out]
         
@@ -87,12 +87,10 @@ graph TB
     J -.-> M
     
     subgraph "Your Services"
-        N[App 1]
-        O[App 2]
-        P[App N]
+        N[Client App]
     end
     
-    N & O & P -->|Logs| F
+    N -->|Logs| F
     
     style A fill:#3498db,color:#fff
     style H fill:#e74c3c,color:#fff
